@@ -6,8 +6,8 @@
 #
 class haproxy::params {
   case $osfamily {
-    Redhat: {
-      $global_options   = {
+    Redhat  : {
+      $global_options = {
         'log'     => "${::ipaddress} local0",
         'chroot'  => '/var/lib/haproxy',
         'pidfile' => '/var/run/haproxy.pid',
@@ -28,13 +28,12 @@ class haproxy::params {
           'connect 10s',
           'client 1m',
           'server 1m',
-          'check 10s',
-        ],
+          'check 10s',],
         'maxconn' => '8000'
       }
     }
-    Debian: {
-      $global_options   = {
+    Debian  : {
+      $global_options = {
         'log'     => "${::ipaddress} local0",
         'chroot'  => '/var/lib/haproxy',
         'pidfile' => '/var/run/haproxy.pid',
@@ -55,11 +54,12 @@ class haproxy::params {
           'connect 10s',
           'client 1m',
           'server 1m',
-          'check 10s',
-        ],
+          'check 10s',],
         'maxconn' => '8000'
       }
     }
-    default: { fail("The $::osfamily operating system is not supported with the haproxy module") }
+    default : {
+      fail("The $::osfamily operating system is not supported with the haproxy module")
+    }
   }
 }
