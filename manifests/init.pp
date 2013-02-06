@@ -60,10 +60,13 @@
 #  }
 #
 class haproxy (
-  $manage_service   = true,
-  $enable           = true,
-  $global_options   = $haproxy::params::global_options,
-  $defaults_options = $haproxy::params::defaults_options
+  $manage_service       = true,
+  $enable               = true,
+  $global_options       = $haproxy::params::global_options,
+  $defaults_options     = $haproxy::params::defaults_options,
+  $nagios_contact_group = 'sysadmin-contact',
+  $notification_period  = '24x7',
+  $monitor              = hiera('monitor', true)
 ) inherits haproxy::params {
   include concat::setup
 
@@ -71,6 +74,7 @@ class haproxy (
     ensure  => $enable ? {
       true  => present,
       false => absent,
+      default => absent
     },
     name    => 'haproxy',
   }
@@ -82,8 +86,9 @@ class haproxy (
       mode    => '0644',
       require => Package['haproxy'],
       notify  => $manage_service ? {
-        true  => Service['haproxy'],
-        false => undef,
+        true   => Service['haproxy'],
+        false  => undef,
+        default => undef
       },
     }
 
@@ -106,8 +111,9 @@ class haproxy (
         content => 'ENABLED=1',
         require => Package['haproxy'],
         before  => $manage_service ? {
-          true  => Service['haproxy'],
-          false => undef,
+          true    => Service['haproxy'],
+          false   => undef,
+          default => undef
         },
       }
     }
@@ -121,12 +127,14 @@ class haproxy (
   if $manage_service {
     service { 'haproxy':
       ensure     => $enable ? {
-        true  => running,
-        false => stopped,
+        true    => running,
+        false   => stopped,
+        default => stopped
       },
       enable     => $enable ? {
-        true  => true,
-        false => false,
+        true    => true,
+        false   => false,
+        default => false
       },
       name       => 'haproxy',
       hasrestart => true,
@@ -136,5 +144,30 @@ class haproxy (
         File[$global_options['chroot']],
       ],
     }
+  }
+  
+  if ($monitor == true) {
+
+    include nagios::target::params
+  
+    # Add nrpe check for running tomcat instance
+    concat::fragment { "check_haproxy_${::fqdn}":
+      target  => "/etc/nrpe.d/10-${::hostname}-checks.cfg",
+      content => inline_template("command[check_haproxy_${::fqdn}]=${nagios::target::params::nagios_plugin_dir}/check_procs -c 1:1 -u haproxy -C haproxy -a haproxy\n"),
+    }  
+    
+    
+    # Add exported nagios_service to monitor that tomcat is running
+    @@nagios_service { "check_haproxy_${::fqdn}":
+      check_command       => "check_nrpe!check_haproxy_${::fqdn}",
+      use                 => 'generic-service',
+      host_name           => $::fqdn,
+      contact_groups      => $nagios_contact_group,
+      notification_period => $notification_period,
+      service_description => "${::hostname} HA-Proxy Running",
+      icon_image          => 'proxy_server.png',
+      icon_image_alt      => 'haproxy',
+    }    
+  
   }
 }
