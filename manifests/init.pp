@@ -164,7 +164,7 @@ class haproxy (
       host_name           => $::fqdn,
       contact_groups      => $nagios_contact_group,
       notification_period => $notification_period,
-      service_description => "${::hostname} HA-Proxy Running",
+      service_description => 'HA-Proxy Running',
       icon_image          => 'proxy_server.png',
       icon_image_alt      => 'haproxy',
     }    
